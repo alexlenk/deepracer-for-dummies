@@ -231,7 +231,18 @@ class DeepRacerRacetrackEnv(gym.Env):
         # Read the image and resize to get the state
         image = Image.frombytes('RGB', (image_data.width, image_data.height), image_data.data, 'raw', 'RGB', 0, 1)
         image = image.resize(TRAINING_IMAGE_SIZE, resample=2)
-        self.next_state = np.array(image)
+        
+        import random
+        rnd_rgb = [0,1,2]
+        random.shuffle(rnd_rgb)
+        observation_new = np.zeros((120,160,3))
+        observation_new[:, :, 0] = image[:, :, rnd_rgb[0]]
+        observation_new[:, :, 1] = image[:, :, rnd_rgb[1]]
+        observation_new[:, :, 2] = image[:, :, rnd_rgb[2]]
+        observation_new = observation_new.astype(np.uint8)
+        
+        self.next_state = observation_new
+        #self.next_state = np.array(image)
 
     def racecar_reset(self):
         try:
