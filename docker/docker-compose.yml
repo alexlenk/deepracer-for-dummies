@@ -34,7 +34,7 @@ services:
       - ../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src:/app/robomaker-deepracer/simulation_ws/src
       - ./volumes/robo/checkpoint:/root/.ros/
     ports:
-      - "8080:5900"
+      - "58080:5900"
     container_name: robomaker
     restart: unless-stopped
     env_file: .env

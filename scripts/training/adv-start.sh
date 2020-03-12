@@ -7,4 +7,4 @@ cp ../../src/markov/actions/model_metadata.json ../../docker/volumes/minio/bucke
 echo "Uploading preset file"
 cp ../../src/markov/presets/default.py ../../docker/volumes/minio/bucket/custom_files/preset.py
 
-./start.sh
+. ./start.sh
