@@ -6,6 +6,12 @@ def reward_function(params):
     Example of rewarding the agent to stay inside the two borders of the track
     '''
     
+    training_run = 0
+    try:
+        training_run = int(os.environ.get("TRAINING_RUN_TOTAL", 0))
+    except Exception as ex:
+        print("No training round variable found")
+    
     global allrounds
     global round_speed
     global round_reward
@@ -36,14 +42,16 @@ def reward_function(params):
 
     # Give a high reward if no wheels go off the track and
     # the agent is somewhere in between the track borders
-    #if all_wheels_on_track:
-    bonus = (progress - last_progress) * 10
+    if all_wheels_on_track:
+        bonus = (progress - last_progress) * 10
+    else:
+        bonus = (progress - last_progress) * 7
 
     reward = bonus
-    # Pretrain the model for xx rounds
-    #if np.sum(floating_rounds) <= 5:
-    #    reward -= (distance_from_center / (track_width/2))**(4)
-    #reward = max(reward, 0.5)
+    # Pretrain the model for xx runs
+    if training_run <= 5:
+        reward -= (distance_from_center / (track_width/2))**(4)
+    reward = max(reward, 0.5)
 
     if abs(params["steering_angle"]) < 5:
         reward *= 2
