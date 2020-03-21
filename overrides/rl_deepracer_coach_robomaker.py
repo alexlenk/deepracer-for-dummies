@@ -127,7 +127,7 @@ estimator = RLEstimator(entry_point="training_worker.py",
                                          "loss_type": "mean squared error",
                                          "num_episodes_between_training" : 20,
                                          "term_cond_max_episodes" : 100000,
-                                         "term_cond_avg_score" : 100000
+                                         "term_cond_avg_score" : 100000,
                                          #"pretrained_s3_bucket": "{}".format(s3_bucket),
                                          #"pretrained_s3_prefix": "rl-deepracer-pretrained"
                                          # "loss_type": "mean squared error",

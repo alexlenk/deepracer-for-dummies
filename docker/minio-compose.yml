@@ -1,0 +1,18 @@
+version: '3.7'
+
+networks:
+  default:
+    external:
+      name: sagemaker-local
+
+services:
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+    container_name: minio
+    command: server /data
+    volumes:
+      - ./volumes/minio:/data
+    restart: unless-stopped
+    env_file: .env
