@@ -18,6 +18,7 @@ if [ "$j" == "" -o "$j" == "0" ]; then
     j=0
     rm ~/deepracer.log
     touch ~/deepracer.log
+    #echo "" > ~/deepracer.log
     rm ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json
     touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json
     mkdir ../../docker/volumes/minio/bucket/train_stats
@@ -30,7 +31,9 @@ else
         exit 1
     fi
     cp ../../docker/volumes/minio/bucket/train_stats/${START_TIME}_deepracer.log ~/deepracer.log 
+    cp ../../docker/volumes/minio/bucket/train_stats/${START_TIME}_eval_metrics_last.json ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json
     train_arg="--resume"
+    . ./echo_model_stats.sh >> ~/deepracer.log
 fi
 
 echo "Starting in round J=$j"

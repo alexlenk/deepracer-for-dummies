@@ -39,11 +39,16 @@ sed -i "s/NUMBER_OF_TRIALS=5/NUMBER_OF_TRIALS=$X_NUMBER_OF_TRIALS/g" ../../docke
 echo "ALTERNATE_DRIVING_DIRECTION=True" >> ../../docker/.env
 echo "CHANGE_START_POSITION=True" >> ../../docker/.env
 echo "EVALUATION_TEST=$TEST" >> ../../docker/.env
+echo "TRAINING_RUN_TOTAL=$j" >> ../../docker/.env
+echo "TRAINING_RUN=$((j-skipped))" >> ../../docker/.env
+echo "MEDIAN_PERCENTAGE=$curr_median_perc" >> ../../docker/.env
+echo "AVERAGE_PERCENTAGE=$curr_avg_perc" >> ../../docker/.env
 
 rm -f ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json
 touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json
 
-. ../evaluation/start.sh & #> ~/deepracer_eval.log &
+cat ../../docker/.env
+. ../evaluation/start.sh > ~/deepracer_eval.log &
 RUNNING=true
 
 while [ $RUNNING == true ]; do

@@ -5,6 +5,8 @@ if [ "$START_TIME" == "" -o "$START_TIME" == "0" ]; then
 fi
 
 PREFIX=${START_TIME}_
+TEST=False
+reeval=false
 
 WORLDS=(New_York_Track China_track Virtual_May19_Train_track Mexico_track Tokyo_Training_track Canada_Training Bowtie_track)
 LEN_WORLDS=${#WORLDS[@]}
@@ -68,12 +70,12 @@ if [ "$j" -gt "0" ]; then
 fi
 
 if [ -f "../../docker/volumes/minio/bucket/train_stats/${PREFIX}skipped-tracks" ]; then
-    skipped_tracks=(`awk '{print ($2)}' ../../docker/volumes/minio/bucket/train_stats/${PREFIX}skipped-tracks | tr "\n" " "`)
+    skipped_tracks=(`awk '{print ($3)}' ../../docker/volumes/minio/bucket/train_stats/${PREFIX}skipped-tracks | tr "\n" " "`)
 else
     skipped_tracks=()
 fi
 if [ -f "../../docker/volumes/minio/bucket/train_stats/${PREFIX}trained-tracks" ]; then
-    trained_tracks=(`awk '{print ($2)}' ../../docker/volumes/minio/bucket/train_stats/${PREFIX}trained-tracks | tr "\n" " "`)
+    trained_tracks=(`awk '{print ($3)}' ../../docker/volumes/minio/bucket/train_stats/${PREFIX}trained-tracks | tr "\n" " "`)
 else
     trained_tracks=()
 fi
@@ -117,6 +119,8 @@ fi
 
 echo "TRAINING_RUN_TOTAL=$j" >> ../../docker/.env
 echo "TRAINING_RUN=$((j-skipped))" >> ../../docker/.env
+echo "MEDIAN_PERCENTAGE=$curr_median_perc" >> ../../docker/.env
+echo "AVERAGE_PERCENTAGE=$curr_avg_perc" >> ../../docker/.env
 
 if [ "$j" -gt "$road_mod_rounds" ] ; then
     TEX_ROAD=${ROAD_TEXTURES[$RANDOM % ${#ROAD_TEXTURES[@]} ]}
@@ -148,7 +152,7 @@ fi
 ../../reset-buckets.sh
 ../../reset-checkpoint.sh
 . ./adv-start.sh  >> ~/deepracer.log &
-sleep 20
+sleep 30
 
 docker exec -t $(docker ps | grep sagemaker | cut -d' ' -f1) redis-cli config set client-output-buffer-limit 'slave 10737418240 10737418240 0'
 docker exec -t $(docker ps | grep sagemaker | cut -d' ' -f1) redis-cli config set maxmemory 10737418240
@@ -159,6 +163,7 @@ mv ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulat
 
 if [ "$j" -gt "$speed_up_rounds" ] ; then
     train_time=3600
+    #train_time=300
 else
     train_time=1800
     #sleep 300
@@ -174,13 +179,59 @@ echo "### Saving Checkpoint file before Evaluation:"
 cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
 docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav
 WORLD_TRAIN=$WORLD
-WORLD=reinvent_base
-X_NUMBER_OF_TRIALS=31
-. ../evaluation/adv-start.sh >> ~/deepracer.log
-. ./echo_model_stats.sh >> ~/deepracer.log
-docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
-echo "### Restoring Checkpoint file:"
-cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+#WORLD=reInvent2019_track
+X_NUMBER_OF_TRIALS=21
+rm ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+
+cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
+cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
+
+cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
+cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
+
+for WORLD in reInvent2019_track reinvent_base; do
+    . ../evaluation/adv-start.sh >> ~/deepracer.log
+    cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+    . ./echo_model_stats.sh >> ~/deepracer.log
+    echo "### Restoring Checkpoint file:"
+    docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+done
+for WORLD in reInvent2019_track reinvent_base; do
+    if [ "$WORLD" == "reinvent_base" ] ; then
+        TEX_ROAD=New_York_Track/textures/Wood.png
+    
+        TEX=reinvent/textures/walls_light_check.jpg
+        echo "######################### Wall-Texture: $TEX ##################################"
+        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}.org
+        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
+    fi
+    if [ "$WORLD" == "reInvent2019_track" ] ; then
+        TEX_ROAD=AWS_track/textures/ASW_track_field.png
+    
+        TEX=reInvent2019_track/textures/walls_dark_check.png
+        echo "######################### Wall-Texture: $TEX ##################################"
+        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}.org
+        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
+    fi
+    
+    
+    echo "######################### Road-Texture: $TEX_ROAD ##################################"
+    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}.org
+    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX_ROAD ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
+
+    . ../evaluation/adv-start.sh >> ~/deepracer.log
+    cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+    . ./echo_model_stats.sh >> ~/deepracer.log
+    echo "### Restoring Checkpoint file:"
+    docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    
+    mv ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}.org ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
+    mv ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}.org ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
+    mv ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${GRASS[$WORLD]}.org ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${GRASS[$WORLD]}
+done
 
 pat='model_checkpoint_path: "[0-9]+_Step-([0-9]+).*"'
 [[ `cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint` =~ $pat ]]
@@ -195,17 +246,19 @@ else
     discount=100
 fi
 
-if [ $median_perc -gt $((last_median_perc*discount/100)) ] || [ $median_perc == $last_median_perc -a $avg_perc -gt $((last_avg_perc*discount/100)) ] || [ $avg_perc == $last_avg_perc -a $median_perc == $last_median_perc -a $last_avg_ms -gt $avg_ms ]; then
-    cp ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json
+echo "Comparison: $median_perc -gt $last_median_perc"
+# last_median_perc * 80 / 100
+if [ $median_perc -gt $last_median_perc ] || [ $median_perc == $last_median_perc -a $avg_perc -gt $last_avg_perc ] || [ $avg_perc == $last_avg_perc -a $median_perc == $last_median_perc -a $last_avg_ms -gt $avg_ms ]; then
+    cp ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json
     echo "### EVALUATION RESULT: New model found - $WORLD_TRAIN"
     
     # Add additional files to Tar
     docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
-    mkdir /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
-    cp /mnt/docker/volumes/minio/bucket/custom_files/* /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
-    cp ~/deepracer.log /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker/
+    mkdir ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
+    cp ~/deepracer-for-dummies/docker/volumes/minio/bucket/custom_files/* ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
+    cp ~/deepracer.log ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/
     
-    ./back-up-pretraining-run.sh ${PREFIX}new-best_j-$((j-1))_mp-${last_median_perc}_ap-${last_avg_perc}_
+    #./back-up-pretraining-run.sh ${PREFIX}new-best_j-$((j-1))_mp-${last_median_perc}_ap-${last_avg_perc}_
     docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos ./set-last-run-to-pretrained.sh
     ./back-up-pretraining-run.sh ${PREFIX}new-best_j-${j}_mp-${median_perc}_ap-${avg_perc}_
     
@@ -219,23 +272,29 @@ if [ $median_perc -gt $((last_median_perc*discount/100)) ] || [ $median_perc == 
     ../../reset-checkpoint.sh
     trained_tracks+=( ${WORLD_TRAIN}_$direction )
     
-    docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
+    #docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
     echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}\t$direction\t$TEX_ROAD\t$TEX_GRASS\t${median_perc}\t$avg_perc\t$avg_ms\t$model_id\t$num_steps" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}trained-tracks
     ((j=j+1))
+    echo "Increasing J to $j"
     model_keep=0
     new_model=true
     reverse=false
+    curr_median_perc=$median_perc
+    curr_avg_perc=$avg_perc
 else
-    docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
+    #docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
     echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}\t$direction\t$TEX_ROAD\t$TEX_GRASS\t${median_perc}\t$avg_perc\t$avg_ms\t$model_id\t$num_steps" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}failed-training
     ((model_keep=model_keep+1))
     new_model=false
     echo "### EVALUATION RESULT: Keeping old model"
+    curr_median_perc=$last_median_perc
+    curr_avg_perc=$last_avg_perc
 fi
 
+
 if [ $model_keep == 2 ]; then
-    echo "## Checking Pre-Trained Checkpoint and backing up Pre-Trained dir"
-    cat ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/checkpoint
+    #echo "## Checking Pre-Trained Checkpoint and backing up Pre-Trained dir"
+    #cat ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/checkpoint
     #./back-up-pretraining-run.sh ${START_TIME}_reeval_j${j}_mp${last_median_perc}_ap${last_avg_perc}_
     
     echo "######################### RE-EVALUATING BEST MODEL ($(date +%Y-%m-%d_%H-%M-%S)) ##################################"
@@ -244,16 +303,77 @@ if [ $model_keep == 2 ]; then
     reeval=true
     ../../reset-buckets.sh
     ../../reset-checkpoint.sh
-    . ../evaluation/adv-start.sh >> ~/deepracer.log
-    . ./echo_model_stats.sh >> ~/deepracer.log
-    cp ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json
+    rm ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+    touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+    #for WORLD in reInvent2019_track reinvent_base; do
+    #    . ../evaluation/adv-start.sh >> ~/deepracer.log
+    #    cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+    #    . ./echo_model_stats.sh >> ~/deepracer.log
+    #    #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    #    #echo "### Restoring Checkpoint file:"
+    #    #cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    #done
+    
+    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
+    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
+
+    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
+    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
+
+    for WORLD in reInvent2019_track reinvent_base; do
+        . ../evaluation/adv-start.sh >> ~/deepracer.log
+        cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+        . ./echo_model_stats.sh >> ~/deepracer.log
+        echo "### Restoring Checkpoint file:"
+        docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+        cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    done
+    for WORLD in reInvent2019_track reinvent_base; do
+        if [ "$WORLD" == "reinvent_base" ] ; then
+            TEX_ROAD=New_York_Track/textures/Wood.png
+
+            TEX=reinvent/textures/walls_light_check.jpg
+            echo "######################### Wall-Texture: $TEX ##################################"
+            cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}.org
+            cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
+        fi
+        if [ "$WORLD" == "reInvent2019_track" ] ; then
+            TEX_ROAD=AWS_track/textures/ASW_track_field.png
+
+            TEX=reInvent2019_track/textures/walls_dark_check.png
+            echo "######################### Wall-Texture: $TEX ##################################"
+            cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}.org
+            cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
+        fi
+
+
+        echo "######################### Road-Texture: $TEX_ROAD ##################################"
+        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}.org
+        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX_ROAD ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
+
+        . ../evaluation/adv-start.sh >> ~/deepracer.log
+        cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+        . ./echo_model_stats.sh >> ~/deepracer.log
+        echo "### Restoring Checkpoint file:"
+        docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+        cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+
+        mv ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}.org ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
+        mv ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}.org ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
+        mv ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${GRASS[$WORLD]}.org ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${GRASS[$WORLD]}
+    done
+
+    
+    
+    cp ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json
     reeval=false
     reverse=true
+    curr_median_perc=$median_perc
+    curr_avg_perc=$avg_perc
 fi   
 
 if [ $model_keep == 4 ]; then
     echo "### Skipping Track"
-    docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
     echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}skipped-tracks
     ((j=j+1))
     skipped_tracks+=( $WORLD_TRAIN )
@@ -261,35 +381,44 @@ if [ $model_keep == 4 ]; then
     reverse=false
 fi
 
-if [ "$new_model" == "true" ] || [ ! -f "../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results" -o "$(($j % 10))" == "0" ]; then
+if [ "$new_model" == "true" -a "$median_perc" -gt "95" ] || [ ! -f "../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results" -o "$(($j % 5))" == "0" ]; then
     echo "######################### TESTING BEST MODEL ##################################"
     echo "######################### TESTING BEST MODEL ##################################"
     echo "######################### TESTING BEST MODEL ##################################"
     
-    docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos ./set-last-run-to-trained.sh
+    #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos ./set-last-run-to-trained.sh
     
     echo "##### Testing Model #####"
-    echo "### Saving Checkpoint file before Evaluation:"
-    cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
-    docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav
+    #echo "### Saving Checkpoint file before Evaluation:"
+    #cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav
     #WORLD=reInvent2019_track
     pat='model_checkpoint_path: "[0-9]+_Step-([0-9]+).*"'
-    [[ `cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint` =~ $pat ]]
+    [[ `cat ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/checkpoint` =~ $pat ]]
     num_steps=${BASH_REMATCH[1]}
     pat='model_checkpoint_path: "([0-9]+).*"'
-    [[ `cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint` =~ $pat ]]
+    [[ `cat ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/checkpoint` =~ $pat ]]
     model_id="${BASH_REMATCH[1]}"
     
     X_NUMBER_OF_TRIALS=11
     TEST=True
+    reeval=true
     for WORLD in reInvent2019_track reinvent_base; do
+        rm ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
+        touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
         . ../evaluation/adv-start.sh >> ~/deepracer.log
+        cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json > ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
         . ./echo_model_stats.sh >> ~/deepracer.log
-        docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+        #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+        #echo "### Restoring Checkpoint file:"
+        #cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
         echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t${model_id}-${num_steps}\t${WORLD}\t${median_perc}\t$avg_perc\t$avg_ms" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results
     done
     echo "### Restoring Checkpoint file:"
     cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
+    reeval=false
+    TEST=False
 fi
 
+cp ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json ../../docker/volumes/minio/bucket/train_stats/${PREFIX}eval_metrics_last.json
 cp ~/deepracer.log ../../docker/volumes/minio/bucket/train_stats/${PREFIX}deepracer.log
