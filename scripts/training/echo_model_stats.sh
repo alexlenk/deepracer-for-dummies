@@ -11,7 +11,9 @@ sum_ms=0
 last_sum_perc=0
 last_sum_ms=0
 array_perc=()
+array_perc_100=()
 array_last_perc=()
+array_last_perc_100=()
 array_ms=()
 array_last_ms=()
 cnt_curr=0
@@ -31,6 +33,10 @@ do
             perc[$k]=0
         else
             array_perc+=( ${perc[$k]} )
+        fi
+        
+        if [ "${perc[$k]}" == "100" ]; then
+            array_perc_100+=( 100 )
         fi
 
         if [ "${ms[$k]}" == "" -o "${ms[$k]}" == "null" ]; then
@@ -60,6 +66,11 @@ do
         else
             array_last_perc+=( ${last_perc[$k]} )
         fi
+        
+        if [ "${last_perc[$k]}" == "100" ]; then
+            array_last_perc_100+=( 100 )
+        fi
+        
         if [ "${last_ms[$k]}" == "" -o "${last_ms[$k]}" == "null" ]; then
             last_ms[$k]=0
         else
@@ -91,6 +102,11 @@ unset IFS
 median_perc=`echo $median_perc | awk '{print int($1+0.5)}'`
 last_median_perc=`echo $last_median_perc | awk '{print int($1+0.5)}'`
 
+cnt_rounds=${#array_perc[@]}
+cnt_last_rounds=${#array_last_perc[@]}
+full_rounds=${#array_perc_100[@]}
+full_last_rounds=${#array_last_perc_100[@]}
+
 avg_perc=`echo "scale=0 ; $sum_perc * 100 / $cnt_curr" | bc`
 avg_ms=`echo "scale=0 ; $sum_ms / $cnt_ms_curr" | bc`
 
@@ -102,12 +118,14 @@ echo "######################### EVALUATING MODEL ###############################
 echo "######################### EVALUATING MODEL ##################################"
 
 echo Last Percentage Array: ${array_last_perc[*]}
+echo Last Full Rounds: $full_last_rounds/$cnt_last_rounds
 echo Last Median Percentage: `echo "scale=2 ; $last_median_perc" | bc`%
 echo Last Average Percentage: `echo "scale=2 ; $last_avg_perc / 100" | bc`%
 echo "Last Average time (Full Rounds): `echo "scale=2 ; $last_avg_ms / 1000" | bc`s"
 #echo Last Median time: `echo "scale=2 ; $last_median_ms / 1000" | bc`s
 
 echo Percentage Array: ${array_perc[*]}
+echo Full Rounds: $full_rounds/$cnt_rounds
 echo Median Percentage: `echo "scale=2 ; $median_perc" | bc`%
 echo Average Percentage: `echo "scale=2 ; $avg_perc / 100" | bc`%
 echo "Average time (Full Rounds): `echo "scale=2 ; $avg_ms / 1000" | bc`s"

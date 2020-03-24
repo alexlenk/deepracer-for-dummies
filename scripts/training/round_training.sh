@@ -200,7 +200,7 @@ for WORLD in reInvent2019_track reinvent_base; do
 done
 for WORLD in reInvent2019_track reinvent_base; do
     if [ "$WORLD" == "reinvent_base" ] ; then
-        TEX_ROAD=New_York_Track/textures/Wood.png
+        TEX_ROAD_EVAL=New_York_Track/textures/Wood.png
     
         TEX=reinvent/textures/walls_light_check.jpg
         echo "######################### Wall-Texture: $TEX ##################################"
@@ -208,7 +208,7 @@ for WORLD in reInvent2019_track reinvent_base; do
         cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
     fi
     if [ "$WORLD" == "reInvent2019_track" ] ; then
-        TEX_ROAD=AWS_track/textures/ASW_track_field.png
+        TEX_ROAD_EVAL=AWS_track/textures/ASW_track_field.png
     
         TEX=reInvent2019_track/textures/walls_dark_check.png
         echo "######################### Wall-Texture: $TEX ##################################"
@@ -217,9 +217,9 @@ for WORLD in reInvent2019_track reinvent_base; do
     fi
     
     
-    echo "######################### Road-Texture: $TEX_ROAD ##################################"
+    echo "######################### Road-Texture: $TEX_ROAD_EVAL ##################################"
     cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}.org
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX_ROAD ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
+    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX_ROAD_EVAL ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
 
     . ../evaluation/adv-start.sh >> ~/deepracer.log
     cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
@@ -255,6 +255,9 @@ if [ $median_perc -gt $last_median_perc ] || [ $median_perc == $last_median_perc
     # Add additional files to Tar
     docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
     mkdir ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
+    cp ~/deepracer-for-dummies/src/* ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
+    cp ../../src/markov/* ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
+    cp ../../rl_deepracer_coach_robomaker.py ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
     cp ~/deepracer-for-dummies/docker/volumes/minio/bucket/custom_files/* ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/custom_files
     cp ~/deepracer.log ~/deepracer-for-dummies/docker/volumes/minio/bucket/rl-deepracer-sagemaker/
     
@@ -265,15 +268,18 @@ if [ $median_perc -gt $last_median_perc ] || [ $median_perc == $last_median_perc
     FILENAME=${PREFIX}new-best_j-${j}_mp-${median_perc}_ap-$avg_perc
     cp ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/model_$model_id.pb ../../../deepracer-training/model/model.pb
     cp ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/model_metadata.json ../../../deepracer-training/model/model_metadata.json
+    cp ../../src/markov/rewards/default.py ../../../deepracer-training/model/rewards.py
+    cp ../../src/markov/* ../../../deepracer-training/model/
+    cp ../../rl_deepracer_coach_robomaker.py ../../../deepracer-training/model/
     
-    tar cvfz ../../../deepracer-training/$FILENAME.tar.gz -C ../../../deepracer-training/model/ model.pb model_metadata.json
+    tar cvfz ../../../deepracer-training/$FILENAME.tar.gz -C ../../../deepracer-training/model/ model.pb model_metadata.json rl_coach.sagemaker_graph_manager.py rewards.py deepracer_racetrack_env.py rl_deepracer_coach_robomaker.py
     #tar cvfz -C ../../../deepracer-training/model/ ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/model.pb
     
     ../../reset-checkpoint.sh
     trained_tracks+=( ${WORLD_TRAIN}_$direction )
     
     #docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
-    echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}\t$direction\t$TEX_ROAD\t$TEX_GRASS\t${median_perc}\t$avg_perc\t$avg_ms\t$model_id\t$num_steps" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}trained-tracks
+    echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}\t$direction\t$TEX_ROAD\t$TEX_GRASS\t$full_rounds/$cnt_rounds\t${median_perc}\t$avg_perc\t$avg_ms\t$model_id\t$num_steps" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}trained-tracks
     ((j=j+1))
     echo "Increasing J to $j"
     model_keep=0
@@ -283,7 +289,7 @@ if [ $median_perc -gt $last_median_perc ] || [ $median_perc == $last_median_perc
     curr_avg_perc=$avg_perc
 else
     #docker run -v ~/deepracer-for-dummies:/mnt centos chown 1011:1001 /mnt/docker/volumes/minio/bucket/rl-deepracer-sagemaker -R
-    echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}\t$direction\t$TEX_ROAD\t$TEX_GRASS\t${median_perc}\t$avg_perc\t$avg_ms\t$model_id\t$num_steps" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}failed-training
+    echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}\t$direction\t$TEX_ROAD\t$TEX_GRASS\t$full_rounds/$cnt_rounds\t${median_perc}\t$avg_perc\t$avg_ms\t$model_id\t$num_steps" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}failed-training
     ((model_keep=model_keep+1))
     new_model=false
     echo "### EVALUATION RESULT: Keeping old model"
@@ -305,14 +311,6 @@ if [ $model_keep == 2 ]; then
     ../../reset-checkpoint.sh
     rm ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
     touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
-    #for WORLD in reInvent2019_track reinvent_base; do
-    #    . ../evaluation/adv-start.sh >> ~/deepracer.log
-    #    cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
-    #    . ./echo_model_stats.sh >> ~/deepracer.log
-    #    #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
-    #    #echo "### Restoring Checkpoint file:"
-    #    #cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
-    #done
     
     cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
     cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
@@ -330,7 +328,7 @@ if [ $model_keep == 2 ]; then
     done
     for WORLD in reInvent2019_track reinvent_base; do
         if [ "$WORLD" == "reinvent_base" ] ; then
-            TEX_ROAD=New_York_Track/textures/Wood.png
+            TEX_ROAD_EVAL=New_York_Track/textures/Wood.png
 
             TEX=reinvent/textures/walls_light_check.jpg
             echo "######################### Wall-Texture: $TEX ##################################"
@@ -338,7 +336,7 @@ if [ $model_keep == 2 ]; then
             cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[$WORLD]}
         fi
         if [ "$WORLD" == "reInvent2019_track" ] ; then
-            TEX_ROAD=AWS_track/textures/ASW_track_field.png
+            TEX_ROAD_EVAL=AWS_track/textures/ASW_track_field.png
 
             TEX=reInvent2019_track/textures/walls_dark_check.png
             echo "######################### Wall-Texture: $TEX ##################################"
@@ -347,9 +345,9 @@ if [ $model_keep == 2 ]; then
         fi
 
 
-        echo "######################### Road-Texture: $TEX_ROAD ##################################"
+        echo "######################### Road-Texture: $TEX_ROAD_EVAL ##################################"
         cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]} ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}.org
-        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX_ROAD ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
+        cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/$TEX_ROAD_EVAL ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[$WORLD]}
 
         . ../evaluation/adv-start.sh >> ~/deepracer.log
         cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json >> ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
@@ -372,27 +370,15 @@ if [ $model_keep == 2 ]; then
     curr_avg_perc=$avg_perc
 fi   
 
-if [ $model_keep == 4 ]; then
-    echo "### Skipping Track"
-    echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}skipped-tracks
-    ((j=j+1))
-    skipped_tracks+=( $WORLD_TRAIN )
-    model_keep=0
-    reverse=false
-fi
 
-if [ "$new_model" == "true" -a "$median_perc" -gt "95" ] || [ ! -f "../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results" -o "$(($j % 5))" == "0" ]; then
+if [ "$new_model" == "true" -a "$median_perc" -gt "95" ] || [ ! -f "../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results" ] || [ "$(($j % 5))" == "0" ] || [ "$model_keep" == "2" ]; then
     echo "######################### TESTING BEST MODEL ##################################"
     echo "######################### TESTING BEST MODEL ##################################"
     echo "######################### TESTING BEST MODEL ##################################"
-    
-    #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos ./set-last-run-to-trained.sh
-    
+
+    ../../reset-buckets.sh
+    ../../reset-checkpoint.sh
     echo "##### Testing Model #####"
-    #echo "### Saving Checkpoint file before Evaluation:"
-    #cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
-    #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav
-    #WORLD=reInvent2019_track
     pat='model_checkpoint_path: "[0-9]+_Step-([0-9]+).*"'
     [[ `cat ../../docker/volumes/minio/bucket/rl-deepracer-pretrained/model/checkpoint` =~ $pat ]]
     num_steps=${BASH_REMATCH[1]}
@@ -409,15 +395,21 @@ if [ "$new_model" == "true" -a "$median_perc" -gt "95" ] || [ ! -f "../../docker
         . ../evaluation/adv-start.sh >> ~/deepracer.log
         cat ../../docker/volumes/minio/bucket/custom_files/eval_metrics.json > ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
         . ./echo_model_stats.sh >> ~/deepracer.log
-        #docker run -v ~/deepracer-for-dummies:/mnt -w /mnt/scripts/training centos cp -f ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint.sav ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
-        #echo "### Restoring Checkpoint file:"
-        #cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
-        echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t${model_id}-${num_steps}\t${WORLD}\t${median_perc}\t$avg_perc\t$avg_ms" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results
+        echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t${model_id}-${num_steps}\t${WORLD}\t$full_rounds/$cnt_rounds\t${median_perc}\t$avg_perc\t$avg_ms" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results
     done
     echo "### Restoring Checkpoint file:"
     cat ../../docker/volumes/minio/bucket/rl-deepracer-sagemaker/model/checkpoint
     reeval=false
     TEST=False
+fi
+
+if [ $model_keep == 4 ]; then
+    echo "### Skipping Track"
+    echo -e "$(date +%Y-%m-%d_%H-%M-%S)\t$j\t${WORLD_TRAIN}" >> ../../docker/volumes/minio/bucket/train_stats/${PREFIX}skipped-tracks
+    ((j=j+1))
+    skipped_tracks+=( $WORLD_TRAIN )
+    model_keep=0
+    reverse=false
 fi
 
 cp ../../docker/volumes/minio/bucket/custom_files/eval_metrics_last.json ../../docker/volumes/minio/bucket/train_stats/${PREFIX}eval_metrics_last.json
