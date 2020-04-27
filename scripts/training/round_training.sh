@@ -184,11 +184,11 @@ X_NUMBER_OF_TRIALS=21
 rm ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
 touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
 
-cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshesreinvent/textures/reInvent2019_track/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
-cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reInvent2019_track/textures/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
+cp ../../textures/reInvent2019_track/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
+cp ../../textures/reInvent2019_track/textures/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
 
-cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reinvent/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
-cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reinvent/textures/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
+cp ../../textures/reinvent/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
+cp ../../textures/reinvent/textures/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
 
 for WORLD in reInvent2019_track reinvent_base; do
     . ../evaluation/adv-start.sh >> ~/deepracer.log
@@ -313,11 +313,11 @@ if [ $model_keep == 2 ]; then
     rm ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
     touch ../../docker/volumes/minio/bucket/custom_files/eval_metrics_rounds.json
     
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshesreinvent/textures/reInvent2019_track/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reInvent2019_track/textures/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
+    cp ../../textures/reInvent2019_track/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
+    cp ../../textures/reInvent2019_track/textures/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
 
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reinvent/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reinvent/textures/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
+    cp ../../textures/reinvent/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
+    cp ../../textures/reinvent/textures/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
 
     for WORLD in reInvent2019_track reinvent_base; do
         . ../evaluation/adv-start.sh >> ~/deepracer.log
@@ -373,11 +373,11 @@ fi
 
 
 if [ "$new_model" == "true" -a "$median_perc" -gt "95" ] || [ ! -f "../../docker/volumes/minio/bucket/train_stats/${PREFIX}test-results" ] || [ "$(($j % 5))" == "0" ] || [ "$model_keep" == "2" ]; then
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshesreinvent/textures/reInvent2019_track/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reInvent2019_track/textures/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
+    cp ../../textures/reInvent2019_track/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reInvent2019_track]}
+    cp ../../textures/reInvent2019_track/textures/org-wall.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reInvent2019_track]}
 
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reinvent/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
-    cp ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/reinvent/textures/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
+    cp ../../textures/reinvent/textures/org-road.png ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${ROADS[reinvent_base]}
+    cp ../../textures/reinvent/textures/org-wall.jpg ../../deepracer/simulation/aws-robomaker-sample-application-deepracer/simulation_ws/src/deepracer_simulation/meshes/${WALLS[reinvent_base]}
 
 
     echo "######################### TESTING BEST MODEL ##################################"
